@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>CapGt  Tienda de Gorras</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<!-- EL LOGIN -->
+<div id="login-screen">
+  <div class="login-box">
+    <h2>CapGt</h2>
+    <p>Sistema de Gestión de Gorras</p>
+
+    <div id="login-error" class="alerta alerta-error" style="display:none"></div>
+
+    <div class="form-group mb-1">
+      <label>Usuario</label>
+      <input type="text" id="login-user" placeholder="admin" />
+    </div>
+    <div class="form-group mb-2">
+      <label>Contraseña</label>
+      <input type="password" id="login-pass" placeholder="••••••••" />
+    </div>
+    <button class="btn btn-blue" id="btn-login" style="width:100%">Ingresar</button>
+    <p style="margin-top:10px;font-size:11px;color:#aaa;text-align:center">usuario: admin / contraseña: admin123</p>
+  </div>
+</div>
+
+<!-- APP PRINCIPAL -->
+<div id="app">
+
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <h1>CapGt</h1>
+      <p>Tienda de Gorras</p>
+    </div>
+    <div class="sidebar-user">
+      Hola, <b id="sidebar-user">—</b>
+    </div>
+
+    <nav>
+      <div class="nav-label">Principal</div>
+      <div class="nav-item active" data-sec="dashboard"> Dashboard</div>
+
+      <div class="nav-label">Inventario</div>
+      <div class="nav-item" data-sec="productos"> Productos</div>
+      <div class="nav-item" data-sec="categorias">Categorías</div>
+      <div class="nav-item" data-sec="proveedores">Proveedores</div>
+
+      <div class="nav-label">Ventas</div>
+      <div class="nav-item" data-sec="ventas">Ventas</div>
+      <div class="nav-item" data-sec="nueva-venta">Nueva Venta</div>
+      <div class="nav-item" data-sec="clientes">Clientes</div>
+      <div class="nav-item" data-sec="empleados">Empleados</div>
+
+      <div class="nav-label">Reportes</div>
+      <div class="nav-item" data-sec="reportes">Reportes</div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <button class="btn btn-gray" id="btn-logout" style="width:100%">Cerrar Sesión</button>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <h2 id="page-title">Dashboard</h2>
+      <div id="topbar-btn"></div>
+    </div>
+
+    <div class="content">
+
+      <!-- DASHBOARD -->
+      <div class="section active" id="sec-dashboard">
+        <div class="stats-row">
+          <div class="stat-card">       <div class="lbl">Productos</div>   <div class="val" id="st-productos">—</div></div>
+          <div class="stat-card rojo">  <div class="lbl">Stock Crítico</div><div class="val" id="st-critico">—</div></div>
+          <div class="stat-card verde"> <div class="lbl">Clientes</div>    <div class="val" id="st-clientes">—</div></div>
+          <div class="stat-card gris">  <div class="lbl">Ventas</div>      <div class="val" id="st-ventas">—</div></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div class="panel">
+            <h3>Stock Crítico!</h3>
+            <div id="dash-critico"><div class="vacío">Cargando...</div></div>
+          </div>
+          <div class="panel">
+            <h3>Últimas Ventas</h3>
+            <div id="dash-ventas"><div class="vacío">Cargando...</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PRODUCTOS -->
+      <div class="section" id="sec-productos">
+        <div class="filtros">
+          <div class="form-group" style="min-width:180px">
+            <label>Buscar</label>
+            <input type="text" id="f-prod-search" placeholder="Nombre o marca..." />
+          </div>
+          <div class="form-group" style="min-width:150px">
+            <label>Categoría</label>
+            <select id="f-prod-cat"><option value="">Todas</option></select>
+          </div>
+          <div class="form-group" style="min-width:130px">
+            <label>Stock</label>
+            <select id="f-prod-stock">
+              <option value="">Todo</option>
+              <option value="1">Solo críticos</option>
+            </select>
+          </div>
+          <button class="btn btn-outline" onclick="cargarProductos()">Filtrar</button>
+        </div>
+        <div class="tabla-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>Nombre</th><th>Marca</th><th>Talla</th><th>Color</th><th>Categoría</th><th>P. Venta</th><th>Stock</th><th>Acciones</th></tr></thead>
+            <tbody id="t-productos"><tr><td colspan="9" class="vacío">Cargando...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- CATEGORIAS -->
+      <div class="section" id="sec-categorias">
+        <div class="tabla-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>Nombre</th><th>Descripción</th><th>Acciones</th></tr></thead>
+            <tbody id="t-categorias"><tr><td colspan="4" class="vacío">Cargando...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- PROVEEDORES -->
+      <div class="section" id="sec-proveedores">
+        <div class="tabla-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>Nombre</th><th>Contacto</th><th>País</th><th>Email</th><th>Acciones</th></tr></thead>
+            <tbody id="t-proveedores"><tr><td colspan="6" class="vacío">Cargando...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- VENTAS -->
+      <div class="section" id="sec-ventas">
+        <div class="filtros">
+          <div class="form-group" style="min-width:140px">
+            <label>Estado</label>
+            <select id="f-venta-estado">
+              <option value="">Todos</option>
+              <option value="completada">Completada</option>
+              <option value="anulada">Anulada</option>
+            </select>
+          </div>
+          <div class="form-group" style="min-width:140px">
+            <label>Desde</label>
+            <input type="date" id="f-venta-desde" />
+          </div>
+          <div class="form-group" style="min-width:140px">
+            <label>Hasta</label>
+            <input type="date" id="f-venta-hasta" />
+          </div>
+          <button class="btn btn-outline" onclick="cargarVentas()">Filtrar</button>
+        </div>
+        <div class="tabla-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>Fecha</th><th>Cliente</th><th>Empleado</th><th>Total</th><th>Método</th><th>Estado</th><th>Acciones</th></tr></thead>
+            <tbody id="t-ventas"><tr><td colspan="8" class="vacío">Cargando...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- NUEVA VENTA -->
+      <div class="section" id="sec-nueva-venta">
+        <div id="nv-error"   class="alerta alerta-error" style="display:none"></div>
+        <div id="nv-ok"      class="alerta alerta-ok"    style="display:none"></div>
+
+        <div class="panel">
+          <h3>Datos de la Venta</h3>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Cliente *</label>
+              <select id="nv-cliente"><option value="">Seleccionar...</option></select>
+            </div>
+            <div class="form-group">
+              <label>Empleado *</label>
+              <select id="nv-empleado"><option value="">Seleccionar...</option></select>
+            </div>
+            <div class="form-group">
+              <label>Método de Pago *</label>
+              <select id="nv-metodo">
+                <option>Efectivo</option>
+                <option>Tarjeta</option>
+                <option>Transferencia</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>Productos</h3>
+          <div class="form-row" style="align-items:flex-end">
+            <div class="form-group" style="flex:3">
+              <label>Producto</label>
+              <select id="nv-prod"><option value="">Seleccionar...</option></select>
+            </div>
+            <div class="form-group" style="max-width:100px">
+              <label>Cantidad</label>
+              <input type="number" id="nv-cant" value="1" min="1" />
+            </div>
+            <div class="form-group" style="max-width:120px">
+              <label>Precio</label>
+              <input type="text" id="nv-precio" readonly />
+            </div>
+            <button class="btn btn-outline" onclick="agregarItem()">+ Agregar</button>
+          </div>
+          <div class="tabla-wrap mt-2">
+            <table>
+              <thead><tr><th>Producto</th><th>Cantidad</th><th>Precio Unit.</th><th>Subtotal</th><th></th></tr></thead>
+              <tbody id="nv-items"><tr><td colspan="5" class="vacío">Sin productos</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;align-items:center;gap:18px">
+          <div>Total: <strong style="font-size:20px">Q <span id="nv-total">0.00</span></strong></div>
+          <button class="btn btn-green" id="btn-venta" onclick="registrarVenta()">✓ Registrar Venta</button>
+        </div>
+      </div>
+
+      <!-- CLIENTES -->
+      <div class="section" id="sec-clientes">
+        <div class="filtros">
+          <div class="form-group" style="min-width:220px">
+            <label>Buscar</label>
+            <input type="text" id="f-cli-search" placeholder="Nombre o email..." />
+          </div>
+          <button class="btn btn-outline" onclick="cargarClientes()">Buscar</button>
+        </div>
+        <div class="tabla-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>Nombre</th><th>Email</th><th>Teléfono</th><th>Registro</th><th>Acciones</th></tr></thead>
+            <tbody id="t-clientes"><tr><td colspan="6" class="vacío">Cargando...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- EMPLEADOS -->
+      <div class="section" id="sec-empleados">
+        <div class="tabla-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>Nombre</th><th>Puesto</th><th>Email</th><th>Contratación</th><th>Salario</th><th>Acciones</th></tr></thead>
+            <tbody id="t-empleados"><tr><td colspan="7" class="vacío">Cargando...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- REPORTES -->
+      <div class="section" id="sec-reportes">
+
+        <div class="panel">
+          <div class="flex-between mb-1">
+            <h3 style="border:none;padding:0;margin:0">Ventas por Mes</h3>
+            <div style="display:flex;gap:8px">
+            </div>
+          </div>
+          <div class="tabla-wrap">
+            <table>
+              <thead><tr><th>Mes</th><th>Cant. Ventas</th><th>Total (Q)</th><th>Promedio (Q)</th></tr></thead>
+              <tbody id="r-mensual"><tr><td colspan="4" class="vacío">Cargando...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>Rendimiento de Empleados</h3>
+          <div class="tabla-wrap">
+            <table>
+              <thead><tr><th>Empleado</th><th>Puesto</th><th>Ventas</th><th>Total (Q)</th><th>Promedio (Q)</th></tr></thead>
+              <tbody id="r-empleados"><tr><td colspan="5" class="vacío">Cargando...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>Clientes Frecuentes</h3>
+          <div class="tabla-wrap">
+            <table>
+              <thead><tr><th>Cliente</th><th>Email</th><th>Compras</th><th>Total Gastado (Q)</th></tr></thead>
+              <tbody id="r-clientes"><tr><td colspan="4" class="vacío">Cargando...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="flex-between mb-1">
+            <h3 style="border:none;padding:0;margin:0">Stock Crítico</h3>
+          </div>
+          <div class="tabla-wrap">
+            <table>
+              <thead><tr><th>Producto</th><th>Marca</th><th>Categoría</th><th>Stock</th><th>Mínimo</th><th>Proveedor</th></tr></thead>
+              <tbody id="r-stock"><tr><td colspan="6" class="vacío">Cargando...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>Top Productos Vendidos</h3>
+          <div class="tabla-wrap">
+            <table>
+              <thead><tr><th>Producto</th><th>Marca</th><th>Unidades Vendidas</th><th>Ingresos (Q)</th></tr></thead>
+              <tbody id="r-top"><tr><td colspan="4" class="vacío">Cargando...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+      </div><!-- /reportes -->
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<!-- MODAL CRUD -->
+<div class="modal-fondo" id="modal-fondo" style="display:none" onclick="cerrarModalFondo(event)">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="modal-titulo">—</h3>
+      <button class="modal-close" onclick="cerrarModal()">X</button>
+    </div>
+    <div id="modal-cuerpo"></div>
+    <div class="modal-foot">
+      <button class="btn btn-gray" onclick="cerrarModal()">Cancelar</button>
+      <button class="btn btn-blue" id="modal-guardar" onclick="guardarModal()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DETALLE VENTA -->
+<div class="modal-fondo" id="modal-venta-fondo" style="display:none">
+  <div class="modal" style="max-width:640px">
+    <div class="modal-head">
+      <h3 id="modal-venta-titulo">Detalle de Venta</h3>
+      <button class="modal-close" onclick="cerrarModalVenta()">X</button>
+    </div>
+    <div id="modal-venta-cuerpo"></div>
+    <div class="modal-foot">
+      <button class="btn btn-gray" onclick="cerrarModalVenta()">Cerrar</button>
+      <button class="btn btn-red" id="btn-anular" onclick="anularVenta()">Anular Venta</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toast-wrap"></div>
+
+<!-- JS separado en modulos -->
+<script src="js/utils.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/nav.js"></script>
+<script src="js/productos.js"></script>
+<script src="js/ventas.js"></script>
+<script src="js/clientes.js"></script>
+<script src="js/empleados.js"></script>
+<script src="js/reportes.js"></script>
+<script src="js/modal.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
