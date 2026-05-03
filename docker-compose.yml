@@ -1,0 +1,60 @@
+version: "3.9"
+
+
+# Levantar con: docker compose up --build
+
+services:
+
+  #MySQL 8.0 
+  db:
+    image: mysql:8.0
+    container_name: capgt_db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE:      ${MYSQL_DATABASE}
+      MYSQL_USER:          ${MYSQL_USER}
+      MYSQL_PASSWORD:      ${MYSQL_PASSWORD}
+    ports:
+      - "3306:3306"
+    volumes:
+      - capgt_data:/var/lib/mysql
+      - ./mysql-init:/docker-entrypoint-initdb.d  # DDL + índices + seed
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost",
+             "-u${MYSQL_USER}", "-p${MYSQL_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+
+  #Backend Node.js / Express 
+  backend:
+    build: ./backend
+    container_name: capgt_backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST:        db
+      DB_PORT:        3306
+      DB_NAME:        ${MYSQL_DATABASE}
+      DB_USER:        ${MYSQL_USER}
+      DB_PASSWORD:    ${MYSQL_PASSWORD}
+      SESSION_SECRET: ${SESSION_SECRET}
+      PORT:           3000
+    ports:
+      - "3000:3000"
+
+  #  Frontend Nginx con archivos estáticos que consume el backend 
+  frontend:
+    build: ./frontend
+    container_name: capgt_frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+
+volumes:
+  capgt_data:
