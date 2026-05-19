@@ -1,8 +1,9 @@
-//CRUD Empleados
 
-async function cargarEmpleados() { // Cargar empleados desde el servidor y mostrarlos en la tabla
+
+async function cargarEmpleados() {
   try {
     const rows  = await api('/empleados');
+    const puede = permisosActuales.editarEmpleados;
     const tbody = document.getElementById('t-empleados');
     tbody.innerHTML = rows.length === 0
       ? '<tr><td colspan="7" class="vacío">Sin empleados</td></tr>'
@@ -14,10 +15,10 @@ async function cargarEmpleados() { // Cargar empleados desde el servidor y mostr
           <td>${e.email || '—'}</td>
           <td>${e.fecha_contratacion || '—'}</td>
           <td><b>${fmtQ(e.salario)}</b></td>
-          <td>
+          <td>${puede ? `
             <button class="btn btn-outline btn-sm" onclick="abrirModal('editar','empleados',${e.empleado_id})">Editar</button>
             <button class="btn btn-red btn-sm" onclick="eliminar('empleados',${e.empleado_id},'${e.nombre.replace(/'/g,"\\'")}')">Eliminar</button>
-          </td>
+          ` : '<span class="txt-muted">Solo lectura</span>'}</td>
         </tr>`).join('');
   } catch (err) {
     toast('Error: ' + err.message, 'error');

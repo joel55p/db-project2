@@ -1,12 +1,11 @@
-// CRUD de Proveedores
-
+// CRUD Proveedores 
 
 const express = require('express');
 const pool    = require('../db/pool');
-const { requireAuth } = require('../middleware/auth');
+const { requireAuth, requireRol } = require('../middleware/auth');
 const router  = express.Router();
 
-router.get('/', requireAuth, async (req, res) => {
+router.get('/', requireAuth, requireRol('admin','supervisor','bodeguero'), async (req, res) => {
   try {
     const [rows] = await pool.query('SELECT * FROM PROVEEDORES ORDER BY nombre');
     return res.json(rows);
@@ -15,7 +14,7 @@ router.get('/', requireAuth, async (req, res) => {
   }
 });
 
-router.post('/', requireAuth, async (req, res) => {
+router.post('/', requireAuth, requireRol('admin'), async (req, res) => {
   const { nombre, contacto, telefono, email, pais } = req.body;
   if (!nombre || !pais) return res.status(400).json({ error: 'Nombre y país son requeridos.' });
   try {
@@ -29,7 +28,7 @@ router.post('/', requireAuth, async (req, res) => {
   }
 });
 
-router.put('/:id', requireAuth, async (req, res) => {
+router.put('/:id', requireAuth, requireRol('admin'), async (req, res) => {
   const { nombre, contacto, telefono, email, pais } = req.body;
   try {
     const [result] = await pool.query(
@@ -43,17 +42,13 @@ router.put('/:id', requireAuth, async (req, res) => {
   }
 });
 
-router.delete('/:id', requireAuth, async (req, res) => {
+router.delete('/:id', requireAuth, requireRol('admin'), async (req, res) => {
   try {
-    const [result] = await pool.query(
-      'DELETE FROM PROVEEDORES WHERE proveedor_id=?', [req.params.id]
-    );
+    const [result] = await pool.query('DELETE FROM PROVEEDORES WHERE proveedor_id=?', [req.params.id]);
     if (result.affectedRows === 0) return res.status(404).json({ error: 'Proveedor no encontrado.' });
     return res.json({ message: 'Proveedor eliminado.' });
   } catch (err) {
-    if (err.code === 'ER_ROW_IS_REFERENCED_2') {
-      return res.status(409).json({ error: 'No se puede eliminar: tiene productos asociados.' });
-    }
+    if (err.code === 'ER_ROW_IS_REFERENCED_2') return res.status(409).json({ error: 'No se puede eliminar: tiene productos asociados.' });
     return res.status(500).json({ error: 'Error al eliminar proveedor.' });
   }
 });

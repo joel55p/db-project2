@@ -149,3 +149,17 @@ tr.stock-bajo td:first-child { border-left: 3px solid #e53935; }
 .txt-muted { color: #777; }
 .txt-right { text-align: right; }
 .vacío { text-align: center; padding: 24px; color: #aaa; font-size: 13px; }
+
+
+/* Badge de rol en sidebar */
+.rol-badge {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: bold;
+  background: #1a73e8;
+  color: white;
+  letter-spacing: 1px;
+}

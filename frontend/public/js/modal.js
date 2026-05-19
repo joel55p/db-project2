@@ -1,29 +1,28 @@
-// Modal CRUD generico
+//  Modal CRUD  que es generico
 
 
-let modoModal   = null; // 'crear' o 'editar'
-let entidadModal= null; // 'productos', 'clientes', 'empleados', 'categorias' o 'proveedores'
-let idModal     = null; // ID del elemento a editar (solo en modo 'editar')
+let modoModal    = null;
+let entidadModal = null;
+let idModal      = null;
 
-async function abrirModal(modo, entidad, id = null) { // Abrir modal para crear o editar un elemento
+async function abrirModal(modo, entidad, id = null) {
   modoModal    = modo;
   entidadModal = entidad;
   idModal      = id;
 
-  const nombres = { productos: 'Producto', clientes: 'Cliente', empleados: 'Empleado', //categorias: 'Categoría', proveedores: 'Proveedor' };
-                    categorias: 'Categoría', proveedores: 'Proveedor' };
+  const nombres = { productos:'Producto', clientes:'Cliente', empleados:'Empleado',
+                    categorias:'Categoría', proveedores:'Proveedor' };
   document.getElementById('modal-titulo').textContent =
     (modo === 'crear' ? 'Nuevo ' : 'Editar ') + (nombres[entidad] || entidad);
 
   let data = {};
-  if (modo === 'editar' && id) { // Cargar datos del elemento a editar
+  if (modo === 'editar' && id) {
     try { data = await api('/' + entidad + '/' + id); }
     catch (err) { toast(err.message, 'error'); return; }
   }
 
   document.getElementById('modal-cuerpo').innerHTML = formulario(entidad, data);
 
-  // Cargar selects de categoria y proveedor para productos
   if (entidad === 'productos') {
     const [cats, provs] = await Promise.all([api('/categorias'), api('/proveedores')]);
     const cSel = document.getElementById('f-cat');
@@ -44,19 +43,18 @@ async function abrirModal(modo, entidad, id = null) { // Abrir modal para crear 
   document.getElementById('modal-fondo').style.display = 'flex';
 }
 
-function cerrarModal() { // Cerrar modal y limpiar campos
+function cerrarModal() {
   document.getElementById('modal-fondo').style.display = 'none';
 }
 
-function cerrarModalFondo(e) { // Cerrar modal al hacer click fuera del contenido
+function cerrarModalFondo(e) {
   if (e.target === document.getElementById('modal-fondo')) cerrarModal();
 }
 
-async function guardarModal() { // Recoger datos del formulario y enviar peticion de crear o actualizar
-  // Recoger todos los campos
+async function guardarModal() {
   const inputs = document.querySelectorAll('#modal-cuerpo input, #modal-cuerpo select, #modal-cuerpo textarea');
-  const body = {};
-  let valido = true;
+  const body   = {};
+  let valido   = true;
 
   inputs.forEach(el => {
     body[el.name] = el.value;
@@ -77,7 +75,6 @@ async function guardarModal() { // Recoger datos del formulario y enviar peticio
       toast('Actualizado correctamente.');
     }
     cerrarModal();
-    // Recargar tabla correspondiente
     const recargar = { productos: cargarProductos, clientes: cargarClientes,
                        empleados: cargarEmpleados, categorias: cargarCategorias,
                        proveedores: cargarProveedores };
@@ -89,7 +86,7 @@ async function guardarModal() { // Recoger datos del formulario y enviar peticio
   }
 }
 
-async function eliminar(entidad, id, nombre) { // Confirmar y enviar peticion de eliminacion
+async function eliminar(entidad, id, nombre) {
   if (!confirm('¿Eliminar "' + nombre + '"?')) return;
   try {
     await api('/' + entidad + '/' + id, { method: 'DELETE' });
@@ -103,7 +100,6 @@ async function eliminar(entidad, id, nombre) { // Confirmar y enviar peticion de
   }
 }
 
-// Genera el HTML del formulario segun entidad
 function formulario(entidad, d) {
   const inp = (lbl, name, type = 'text', req = false, ph = '') =>
     `<div class="form-group">
@@ -111,7 +107,7 @@ function formulario(entidad, d) {
        <input type="${type}" name="${name}" value="${d[name] ?? ''}" placeholder="${ph}" ${req ? 'required' : ''} />
      </div>`;
 
-  const sel = (lbl, name, opciones, req = false) => // Para campos de seleccion como puesto, categoria o proveedor
+  const sel = (lbl, name, opciones, req = false) =>
     `<div class="form-group">
        <label>${lbl}${req ? ' *' : ''}</label>
        <select name="${name}" ${req ? 'required' : ''}>
@@ -120,55 +116,36 @@ function formulario(entidad, d) {
        </select>
      </div>`;
 
-  const ta = (lbl, name) => // Para campos de texto largo como descripcion o direccion
+  const ta = (lbl, name) =>
     `<div class="form-group" style="flex:1 1 100%">
        <label>${lbl}</label>
        <textarea name="${name}" rows="2">${d[name] ?? ''}</textarea>
      </div>`;
 
-  const forms = { // HTML de formularios para cada entidad
+  const forms = {
     productos: `<div class="form-row">
       <div class="form-group"><label>Categoría *</label><select name="categoria_id" id="f-cat" required><option value="">Cargando...</option></select></div>
       <div class="form-group"><label>Proveedor *</label><select name="proveedor_id" id="f-prov" required><option value="">Cargando...</option></select></div>
-      ${inp('Nombre','nombre','text',true)}
-      ${inp('Marca','marca','text',true)}
-      ${inp('Talla','talla','text',true,'S, M, L, Única...')}
-      ${inp('Color','color','text',true)}
-      ${inp('Precio Compra (Q)','precio_compra','number',true)}
-      ${inp('Precio Venta (Q)','precio_venta','number',true)}
-      ${inp('Stock','stock','number')}
-      ${inp('Stock Mínimo','stock_minimo','number')}
+      ${inp('Nombre','nombre','text',true)}${inp('Marca','marca','text',true)}
+      ${inp('Talla','talla','text',true,'S, M, L, Única...')}${inp('Color','color','text',true)}
+      ${inp('Precio Compra (Q)','precio_compra','number',true)}${inp('Precio Venta (Q)','precio_venta','number',true)}
+      ${inp('Stock','stock','number')}${inp('Stock Mínimo','stock_minimo','number')}
     </div>`,
-
     clientes: `<div class="form-row">
-      ${inp('Nombre','nombre','text',true)}
-      ${inp('Email','email','email')}
-      ${inp('Teléfono','telefono')}
-      ${ta('Dirección','direccion')}
+      ${inp('Nombre','nombre','text',true)}${inp('Email','email','email')}
+      ${inp('Teléfono','telefono')}${ta('Dirección','direccion')}
     </div>`,
-
     empleados: `<div class="form-row">
       ${inp('Nombre','nombre','text',true)}
       ${sel('Puesto','puesto',[['Supervisor','Supervisor'],['Vendedor','Vendedor'],['Cajero','Cajero'],['Bodeguero','Bodeguero']],true)}
-      ${inp('Email','email','email')}
-      ${inp('Teléfono','telefono')}
-      ${inp('Fecha Contratación','fecha_contratacion','date',true)}
-      ${inp('Salario (Q)','salario','number',true)}
+      ${inp('Email','email','email')}${inp('Teléfono','telefono')}
+      ${inp('Fecha Contratación','fecha_contratacion','date',true)}${inp('Salario (Q)','salario','number',true)}
     </div>`,
-
-    categorias: `<div class="form-row">
-      ${inp('Nombre','nombre','text',true)}
-      ${ta('Descripción','descripcion')}
-    </div>`,
-
+    categorias: `<div class="form-row">${inp('Nombre','nombre','text',true)}${ta('Descripción','descripcion')}</div>`,
     proveedores: `<div class="form-row">
-      ${inp('Nombre','nombre','text',true)}
-      ${inp('Contacto','contacto')}
-      ${inp('Teléfono','telefono')}
-      ${inp('Email','email','email')}
-      ${inp('País','pais','text',true)}
+      ${inp('Nombre','nombre','text',true)}${inp('Contacto','contacto')}
+      ${inp('Teléfono','telefono')}${inp('Email','email','email')}${inp('País','pais','text',true)}
     </div>`,
   };
-
   return forms[entidad] || '<p>Formulario no disponible</p>';
 }

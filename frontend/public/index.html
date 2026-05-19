@@ -7,7 +7,7 @@
 </head>
 <body>
 
-<!-- EL LOGIN -->
+<!-- LOGIN -->
 <div id="login-screen">
   <div class="login-box">
     <h2>CapGt</h2>
@@ -24,13 +24,21 @@
       <input type="password" id="login-pass" placeholder="••••••••" />
     </div>
     <button class="btn btn-blue" id="btn-login" style="width:100%">Ingresar</button>
-    <p style="margin-top:10px;font-size:11px;color:#aaa;text-align:center">usuario: admin / contraseña: admin123</p>
+
+    <!-- Usuarios de prueba por rol que es basicmaente el proyecto 3 -->
+    <div style="margin-top:14px;font-size:11px;color:#777;border-top:1px solid #eee;padding-top:10px">
+      <div style="font-weight:bold;margin-bottom:4px;color:#555">Usuarios de prueba:</div>
+      <div>admin / admin123 &nbsp;→&nbsp; <b>Admin</b></div>
+      <div>supervisor1 / secret123 &nbsp;→&nbsp; <b>Supervisor</b></div>
+      <div>vendedor1 / secret123 &nbsp;→&nbsp; <b>Vendedor</b></div>
+      <div>cajero1 / secret123 &nbsp;→&nbsp; <b>Cajero</b></div>
+      <div>bodeguero1 / secret123 &nbsp;→&nbsp; <b>Bodeguero</b></div>
+    </div>
   </div>
 </div>
 
-<!-- APP PRINCIPAL -->
+<!-- APP -->
 <div id="app">
-
   <aside class="sidebar">
     <div class="sidebar-logo">
       <h1>CapGt</h1>
@@ -38,25 +46,26 @@
     </div>
     <div class="sidebar-user">
       Hola, <b id="sidebar-user">—</b>
+      <span class="rol-badge" id="sidebar-rol"></span>
     </div>
 
     <nav>
       <div class="nav-label">Principal</div>
-      <div class="nav-item active" data-sec="dashboard"> Dashboard</div>
+      <div class="nav-item active" data-sec="dashboard">Dashboard</div>
 
       <div class="nav-label">Inventario</div>
-      <div class="nav-item" data-sec="productos"> Productos</div>
-      <div class="nav-item" data-sec="categorias">Categorías</div>
-      <div class="nav-item" data-sec="proveedores">Proveedores</div>
+      <div class="nav-item" data-sec="productos">Productos</div>
+      <div class="nav-item" id="nav-categorias" data-sec="categorias">Categorías</div>
+      <div class="nav-item" id="nav-proveedores" data-sec="proveedores">Proveedores</div>
 
       <div class="nav-label">Ventas</div>
-      <div class="nav-item" data-sec="ventas">Ventas</div>
-      <div class="nav-item" data-sec="nueva-venta">Nueva Venta</div>
-      <div class="nav-item" data-sec="clientes">Clientes</div>
-      <div class="nav-item" data-sec="empleados">Empleados</div>
+      <div class="nav-item" id="nav-ventas"      data-sec="ventas">Ventas</div>
+      <div class="nav-item" id="nav-nueva-venta" data-sec="nueva-venta">Nueva Venta</div>
+      <div class="nav-item" id="nav-clientes"    data-sec="clientes">Clientes</div>
+      <div class="nav-item" id="nav-empleados"   data-sec="empleados">Empleados</div>
 
       <div class="nav-label">Reportes</div>
-      <div class="nav-item" data-sec="reportes">Reportes</div>
+      <div class="nav-item" id="nav-reportes" data-sec="reportes">Reportes</div>
     </nav>
 
     <div class="sidebar-footer">
@@ -82,7 +91,7 @@
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
           <div class="panel">
-            <h3>Stock Crítico!</h3>
+            <h3>Stock Crítico</h3>
             <div id="dash-critico"><div class="vacío">Cargando...</div></div>
           </div>
           <div class="panel">
@@ -171,46 +180,24 @@
 
       <!-- NUEVA VENTA -->
       <div class="section" id="sec-nueva-venta">
-        <div id="nv-error"   class="alerta alerta-error" style="display:none"></div>
-        <div id="nv-ok"      class="alerta alerta-ok"    style="display:none"></div>
-
+        <div id="nv-error" class="alerta alerta-error" style="display:none"></div>
+        <div id="nv-ok"    class="alerta alerta-ok"    style="display:none"></div>
         <div class="panel">
           <h3>Datos de la Venta</h3>
           <div class="form-row">
-            <div class="form-group">
-              <label>Cliente *</label>
-              <select id="nv-cliente"><option value="">Seleccionar...</option></select>
-            </div>
-            <div class="form-group">
-              <label>Empleado *</label>
-              <select id="nv-empleado"><option value="">Seleccionar...</option></select>
-            </div>
-            <div class="form-group">
-              <label>Método de Pago *</label>
-              <select id="nv-metodo">
-                <option>Efectivo</option>
-                <option>Tarjeta</option>
-                <option>Transferencia</option>
-              </select>
+            <div class="form-group"><label>Cliente *</label><select id="nv-cliente"><option value="">Seleccionar...</option></select></div>
+            <div class="form-group"><label>Empleado *</label><select id="nv-empleado"><option value="">Seleccionar...</option></select></div>
+            <div class="form-group"><label>Método de Pago *</label>
+              <select id="nv-metodo"><option>Efectivo</option><option>Tarjeta</option><option>Transferencia</option></select>
             </div>
           </div>
         </div>
-
         <div class="panel">
           <h3>Productos</h3>
           <div class="form-row" style="align-items:flex-end">
-            <div class="form-group" style="flex:3">
-              <label>Producto</label>
-              <select id="nv-prod"><option value="">Seleccionar...</option></select>
-            </div>
-            <div class="form-group" style="max-width:100px">
-              <label>Cantidad</label>
-              <input type="number" id="nv-cant" value="1" min="1" />
-            </div>
-            <div class="form-group" style="max-width:120px">
-              <label>Precio</label>
-              <input type="text" id="nv-precio" readonly />
-            </div>
+            <div class="form-group" style="flex:3"><label>Producto</label><select id="nv-prod"><option value="">Seleccionar...</option></select></div>
+            <div class="form-group" style="max-width:100px"><label>Cantidad</label><input type="number" id="nv-cant" value="1" min="1" /></div>
+            <div class="form-group" style="max-width:120px"><label>Precio</label><input type="text" id="nv-precio" readonly /></div>
             <button class="btn btn-outline" onclick="agregarItem()">+ Agregar</button>
           </div>
           <div class="tabla-wrap mt-2">
@@ -220,7 +207,6 @@
             </table>
           </div>
         </div>
-
         <div style="display:flex;justify-content:flex-end;align-items:center;gap:18px">
           <div>Total: <strong style="font-size:20px">Q <span id="nv-total">0.00</span></strong></div>
           <button class="btn btn-green" id="btn-venta" onclick="registrarVenta()">✓ Registrar Venta</button>
@@ -230,10 +216,7 @@
       <!-- CLIENTES -->
       <div class="section" id="sec-clientes">
         <div class="filtros">
-          <div class="form-group" style="min-width:220px">
-            <label>Buscar</label>
-            <input type="text" id="f-cli-search" placeholder="Nombre o email..." />
-          </div>
+          <div class="form-group" style="min-width:220px"><label>Buscar</label><input type="text" id="f-cli-search" placeholder="Nombre o email..." /></div>
           <button class="btn btn-outline" onclick="cargarClientes()">Buscar</button>
         </div>
         <div class="tabla-wrap">
@@ -256,13 +239,8 @@
 
       <!-- REPORTES -->
       <div class="section" id="sec-reportes">
-
         <div class="panel">
-          <div class="flex-between mb-1">
-            <h3 style="border:none;padding:0;margin:0">Ventas por Mes</h3>
-            <div style="display:flex;gap:8px">
-            </div>
-          </div>
+          <h3>Ventas por Mes (CTE + GROUP BY)</h3>
           <div class="tabla-wrap">
             <table>
               <thead><tr><th>Mes</th><th>Cant. Ventas</th><th>Total (Q)</th><th>Promedio (Q)</th></tr></thead>
@@ -270,7 +248,6 @@
             </table>
           </div>
         </div>
-
         <div class="panel">
           <h3>Rendimiento de Empleados</h3>
           <div class="tabla-wrap">
@@ -280,7 +257,6 @@
             </table>
           </div>
         </div>
-
         <div class="panel">
           <h3>Clientes Frecuentes</h3>
           <div class="tabla-wrap">
@@ -290,11 +266,8 @@
             </table>
           </div>
         </div>
-
         <div class="panel">
-          <div class="flex-between mb-1">
-            <h3 style="border:none;padding:0;margin:0">Stock Crítico</h3>
-          </div>
+          <h3>Stock Crítico (EXISTS)</h3>
           <div class="tabla-wrap">
             <table>
               <thead><tr><th>Producto</th><th>Marca</th><th>Categoría</th><th>Stock</th><th>Mínimo</th><th>Proveedor</th></tr></thead>
@@ -302,7 +275,6 @@
             </table>
           </div>
         </div>
-
         <div class="panel">
           <h3>Top Productos Vendidos</h3>
           <div class="tabla-wrap">
@@ -312,12 +284,11 @@
             </table>
           </div>
         </div>
+      </div>
 
-      </div><!-- /reportes -->
-
-    </div><!-- /content -->
-  </div><!-- /main -->
-</div><!-- /app -->
+    </div>
+  </div>
+</div>
 
 <!-- MODAL CRUD -->
 <div class="modal-fondo" id="modal-fondo" style="display:none" onclick="cerrarModalFondo(event)">
@@ -351,7 +322,6 @@
 
 <div class="toast-wrap" id="toast-wrap"></div>
 
-<!-- JS separado en modulos -->
 <script src="js/utils.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/nav.js"></script>

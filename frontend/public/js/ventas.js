@@ -1,17 +1,14 @@
 // Ventas y nueva venta
 
 
-let items = [];  // productos de la venta en curso
+let items = [];
 let ventaActualId = null;
-
-// ahora bien el listado de ventas
 
 async function cargarVentas() {
   try {
     const estado = document.getElementById('f-venta-estado').value;
     const desde  = document.getElementById('f-venta-desde').value;
     const hasta  = document.getElementById('f-venta-hasta').value;
-
     const p = new URLSearchParams();
     if (estado) p.set('estado', estado);
     if (desde)  p.set('fecha_desde', desde);
@@ -37,14 +34,15 @@ async function cargarVentas() {
   }
 }
 
-// modal con el detalle de venta
-
 async function verVenta(id) {
   ventaActualId = id;
   try {
     const v = await api('/ventas/' + id);
     document.getElementById('modal-venta-titulo').textContent = 'Venta #' + v.venta_id;
-    document.getElementById('btn-anular').style.display = v.estado !== 'anulada' ? '' : 'none';
+    // Solo supervisor y admin pueden anular
+    const puedeAnular = permisosActuales.anularVentas;
+    document.getElementById('btn-anular').style.display =
+      (puedeAnular && v.estado !== 'anulada') ? '' : 'none';
 
     document.getElementById('modal-venta-cuerpo').innerHTML = `
       <div class="form-row" style="margin-bottom:12px">
@@ -67,18 +65,17 @@ async function verVenta(id) {
           </tbody>
         </table>
       </div>`;
-
     document.getElementById('modal-venta-fondo').style.display = 'flex';
   } catch (err) {
     toast('Error: ' + err.message, 'error');
   }
 }
 
-function cerrarModalVenta() { //cierra el modal de detalle de venta
+function cerrarModalVenta() {
   document.getElementById('modal-venta-fondo').style.display = 'none';
 }
 
-async function anularVenta() {// Anula la venta actual, importante para manejar devoluciones y errores en el proceso de venta
+async function anularVenta() {
   if (!confirm('¿Anular esta venta? El stock será devuelto.')) return;
   try {
     await api('/ventas/' + ventaActualId + '/estado', {
@@ -93,7 +90,6 @@ async function anularVenta() {// Anula la venta actual, importante para manejar 
   }
 }
 
-// cuando se hace nueva venta
 async function prepararNuevaVenta() {
   items = [];
   renderItems();
@@ -132,18 +128,15 @@ async function prepararNuevaVenta() {
   }
 }
 
-function agregarItem() { // Agrega un producto a la venta en curso, importante para construir el detalle de la venta antes de registrarla
-  const pSel = document.getElementById('nv-prod'); // select de productos en el formulario de nueva venta
+function agregarItem() {
+  const pSel = document.getElementById('nv-prod');
   const cant = parseInt(document.getElementById('nv-cant').value);
   const opt  = pSel.options[pSel.selectedIndex];
-
   if (!opt.value) { toast('Selecciona un producto.', 'warn'); return; }
   if (!cant || cant < 1) { toast('Cantidad inválida.', 'warn'); return; }
-  if (cant > parseInt(opt.dataset.stock)) {
-    toast('Stock insuficiente. Disponible: ' + opt.dataset.stock, 'error'); return; // validacion importante para evitar vender mas de lo que hay en stock, aunque el backend tambien debe validar esto por seguridad.
-  }
+  if (cant > parseInt(opt.dataset.stock)) { toast('Stock insuficiente. Disponible: ' + opt.dataset.stock, 'error'); return; }
 
-  const existe = items.find(i => i.producto_id === parseInt(opt.value)); // Si el producto ya fue agregado, solo actualizar la cantidad y subtotal, en lugar de agregar una nueva linea al detalle de venta
+  const existe = items.find(i => i.producto_id === parseInt(opt.value));
   if (existe) {
     existe.cantidad += cant;
     existe.subtotal  = existe.cantidad * existe.precio;
@@ -156,14 +149,13 @@ function agregarItem() { // Agrega un producto a la venta en curso, importante p
       subtotal:    cant * parseFloat(opt.dataset.precio),
     });
   }
-
   renderItems();
   pSel.value = '';
   document.getElementById('nv-precio').value = '';
   document.getElementById('nv-cant').value   = '1';
 }
 
-function renderItems() { // Renderiza la tabla de productos agregados a la venta, importante para mostrar al usuario el detalle de lo que está vendiendo antes de confirmar la venta
+function renderItems() {
   const tbody = document.getElementById('nv-items');
   if (items.length === 0) {
     tbody.innerHTML = '<tr><td colspan="5" class="vacío">Sin productos agregados</td></tr>';
@@ -173,18 +165,16 @@ function renderItems() { // Renderiza la tabla de productos agregados a la venta
   tbody.innerHTML = items.map((it, i) => `
     <tr>
       <td>${it.nombre}</td>
-      <td><input type="number" value="${it.cantidad}" min="1" style="width:65px"
-            onchange="cambiarCant(${i}, this.value)" /></td>
+      <td><input type="number" value="${it.cantidad}" min="1" style="width:65px" onchange="cambiarCant(${i}, this.value)" /></td>
       <td>${fmtQ(it.precio)}</td>
       <td><b>${fmtQ(it.subtotal)}</b></td>
       <td><button class="btn btn-red btn-sm" onclick="quitarItem(${i})">✕</button></td>
     </tr>`).join('');
-
   document.getElementById('nv-total').textContent =
     items.reduce((s, i) => s + i.subtotal, 0).toFixed(2);
 }
 
-function cambiarCant(idx, val) { // Cambia la cantidad de un producto ya agregado a la venta, importante para permitir al usuario ajustar las cantidades antes de confirmar la venta
+function cambiarCant(idx, val) {
   const c = parseInt(val);
   if (!c || c < 1) return;
   items[idx].cantidad = c;
@@ -192,12 +182,12 @@ function cambiarCant(idx, val) { // Cambia la cantidad de un producto ya agregad
   renderItems();
 }
 
-function quitarItem(idx) { // Quita un producto del detalle de venta, importante para permitir al usuario corregir errores o cambiar de opinión antes de confirmar la venta
+function quitarItem(idx) {
   items.splice(idx, 1);
   renderItems();
 }
 
-async function registrarVenta() { // Registra la venta en el servidor, importante para guardar la venta en la base de datos y actualizar el stock de los productos vendidos
+async function registrarVenta() {
   const errEl = document.getElementById('nv-error');
   const okEl  = document.getElementById('nv-ok');
   errEl.style.display = 'none';
@@ -207,14 +197,13 @@ async function registrarVenta() { // Registra la venta en el servidor, important
   const empleado_id = document.getElementById('nv-empleado').value;
   const metodo_pago = document.getElementById('nv-metodo').value;
 
-  if (!cliente_id)      { errEl.textContent = 'Selecciona un cliente.';       errEl.style.display = 'block'; return; }
-  if (!empleado_id)     { errEl.textContent = 'Selecciona un empleado.';      errEl.style.display = 'block'; return; }
-  if (items.length ===0){ errEl.textContent = 'Agrega al menos un producto.'; errEl.style.display = 'block'; return; }
+  if (!cliente_id)       { errEl.textContent = 'Selecciona un cliente.';       errEl.style.display = 'block'; return; }
+  if (!empleado_id)      { errEl.textContent = 'Selecciona un empleado.';      errEl.style.display = 'block'; return; }
+  if (items.length === 0){ errEl.textContent = 'Agrega al menos un producto.'; errEl.style.display = 'block'; return; }
 
   const btn = document.getElementById('btn-venta');
   btn.disabled = true;
   try {
-    // Transaccion BEGIN/COMMIT/ROLLBACK que  ocurre en el backend
     const data = await api('/ventas', {
       method: 'POST',
       body: JSON.stringify({

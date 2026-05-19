@@ -1,8 +1,8 @@
-//Va a ser el CRUD de Categorías
+// CRUD Categorias
 
 const express = require('express');
 const pool    = require('../db/pool');
-const { requireAuth } = require('../middleware/auth');
+const { requireAuth, requireRol } = require('../middleware/auth');
 const router  = express.Router();
 
 router.get('/', requireAuth, async (req, res) => {
@@ -14,7 +14,7 @@ router.get('/', requireAuth, async (req, res) => {
   }
 });
 
-router.post('/', requireAuth, async (req, res) => {
+router.post('/', requireAuth, requireRol('admin'), async (req, res) => {
   const { nombre, descripcion } = req.body;
   if (!nombre) return res.status(400).json({ error: 'El nombre es requerido.' });
   try {
@@ -29,7 +29,7 @@ router.post('/', requireAuth, async (req, res) => {
   }
 });
 
-router.put('/:id', requireAuth, async (req, res) => {
+router.put('/:id', requireAuth, requireRol('admin'), async (req, res) => {
   const { nombre, descripcion } = req.body;
   try {
     const [result] = await pool.query(
@@ -43,17 +43,13 @@ router.put('/:id', requireAuth, async (req, res) => {
   }
 });
 
-router.delete('/:id', requireAuth, async (req, res) => {
+router.delete('/:id', requireAuth, requireRol('admin'), async (req, res) => {
   try {
-    const [result] = await pool.query(
-      'DELETE FROM CATEGORIAS WHERE categoria_id=?', [req.params.id]
-    );
+    const [result] = await pool.query('DELETE FROM CATEGORIAS WHERE categoria_id=?', [req.params.id]);
     if (result.affectedRows === 0) return res.status(404).json({ error: 'Categoría no encontrada.' });
     return res.json({ message: 'Categoría eliminada.' });
   } catch (err) {
-    if (err.code === 'ER_ROW_IS_REFERENCED_2') {
-      return res.status(409).json({ error: 'No se puede eliminar: tiene productos asociados.' });
-    }
+    if (err.code === 'ER_ROW_IS_REFERENCED_2') return res.status(409).json({ error: 'No se puede eliminar: tiene productos asociados.' });
     return res.status(500).json({ error: 'Error al eliminar categoría.' });
   }
 });
