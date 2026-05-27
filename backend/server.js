@@ -1,9 +1,9 @@
-//Servidor Express principal
+// Servidor Express con Sequelize ORM
 
-
-const express = require('express');
-const session = require('express-session');
-const cors    = require('cors');
+const express    = require('express');
+const session    = require('express-session');
+const cors       = require('cors');
+const { sequelize } = require('./db/sequelize');
 
 const app = express();
 
@@ -19,10 +19,7 @@ app.use(session({
   secret:            process.env.SESSION_SECRET || 'capgt_secret',
   resave:            false,
   saveUninitialized: false,
-  cookie: {
-    httpOnly: true,
-    maxAge:   8 * 60 * 60 * 1000,
-  },
+  cookie: { httpOnly: true, maxAge: 8 * 60 * 60 * 1000 },
 }));
 
 // Rutas
@@ -44,6 +41,19 @@ app.use((err, _req, res, _next) => {
 });
 
 const PORT = parseInt(process.env.PORT) || 3000;
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`CapGt backend escuchando en puerto ${PORT}`);
-});
+
+// Conectar Sequelize ORM y luego iniciar servidor
+sequelize.authenticate()
+  .then(() => {
+    console.log('Sequelize ORM conectado correctamente.');
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`CapGt backend escuchando en puerto ${PORT}`);
+    });
+  })
+  .catch(err => {
+    console.error('Error conectando Sequelize:', err);
+    // Arrancar igual aunque falle Sequelize (pool sigue funcionando)
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`CapGt backend en puerto ${PORT} (sin ORM)`);
+    });
+  });
