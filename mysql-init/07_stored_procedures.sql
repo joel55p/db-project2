@@ -1,5 +1,3 @@
-
-
 -- Stored Procedures
 -- ----------------------------------------------------
 
@@ -9,7 +7,7 @@ DELIMITER $$
 
 
 -- 1: registrar_venta
--- Registra una venta con START TRANSACTION y  ROLLBACK
+-- Registra una venta con START TRANSACTION y ROLLBACK
 -- IN: cliente_id, empleado_id, metodo_pago, producto_id, cantidad
 -- OUT: p_venta_id, p_total, p_error
 -- -----------------------------------------------------------
@@ -48,33 +46,29 @@ BEGIN
 
     IF v_stock IS NULL THEN
         SET p_error = 'Producto no encontrado.';
-        LEAVE registrar_venta;
-    END IF;
-
-    IF v_stock < p_cantidad THEN
+    ELSEIF v_stock < p_cantidad THEN
         SET p_error = CONCAT('Stock insuficiente. Disponible: ', v_stock);
-        LEAVE registrar_venta;
+    ELSE
+        SET v_subtotal = v_precio * p_cantidad;
+        SET p_total    = v_subtotal;
+
+        START TRANSACTION;
+
+            INSERT INTO VENTAS (cliente_id, empleado_id, fecha_venta, total, metodo_pago, estado)
+            VALUES (p_cliente_id, p_empleado_id, NOW(), p_total, p_metodo_pago, 'completada');
+
+            SET p_venta_id = LAST_INSERT_ID();
+
+            INSERT INTO DETALLE_VENTAS (venta_id, producto_id, cantidad, precio_unitario, subtotal)
+            VALUES (p_venta_id, p_producto_id, p_cantidad, v_precio, v_subtotal);
+
+            UPDATE PRODUCTOS SET stock = stock - p_cantidad
+            WHERE producto_id = p_producto_id;
+
+        COMMIT;
+
+        SET p_error = '';
     END IF;
-
-    SET v_subtotal = v_precio * p_cantidad;
-    SET p_total    = v_subtotal;
-
-    START TRANSACTION;
-
-        INSERT INTO VENTAS (cliente_id, empleado_id, fecha_venta, total, metodo_pago, estado)
-        VALUES (p_cliente_id, p_empleado_id, NOW(), p_total, p_metodo_pago, 'completada');
-
-        SET p_venta_id = LAST_INSERT_ID();
-
-        INSERT INTO DETALLE_VENTAS (venta_id, producto_id, cantidad, precio_unitario, subtotal)
-        VALUES (p_venta_id, p_producto_id, p_cantidad, v_precio, v_subtotal);
-
-        UPDATE PRODUCTOS SET stock = stock - p_cantidad
-        WHERE producto_id = p_producto_id;
-
-    COMMIT;
-
-    SET p_error = '';
 END $$
 
 
@@ -112,32 +106,30 @@ BEGIN
     SELECT estado INTO v_estado FROM VENTAS WHERE venta_id = p_venta_id;
 
     IF v_estado IS NULL THEN
+        SET p_ok      = 0;
         SET p_mensaje = 'Venta no encontrada.';
-        LEAVE anular_venta;
-    END IF;
-
-    IF v_estado = 'anulada' THEN
+    ELSEIF v_estado = 'anulada' THEN
+        SET p_ok      = 0;
         SET p_mensaje = 'La venta ya esta anulada.';
-        LEAVE anular_venta;
+    ELSE
+        START TRANSACTION;
+
+            OPEN cur;
+            loop_detalle: LOOP
+                FETCH cur INTO v_producto, v_cantidad;
+                IF done THEN LEAVE loop_detalle; END IF;
+                UPDATE PRODUCTOS SET stock = stock + v_cantidad
+                WHERE producto_id = v_producto;
+            END LOOP;
+            CLOSE cur;
+
+            UPDATE VENTAS SET estado = 'anulada' WHERE venta_id = p_venta_id;
+
+        COMMIT;
+
+        SET p_ok      = 1;
+        SET p_mensaje = 'Venta anulada correctamente. Stock devuelto.';
     END IF;
-
-    START TRANSACTION;
-
-        OPEN cur;
-        loop_detalle: LOOP
-            FETCH cur INTO v_producto, v_cantidad;
-            IF done THEN LEAVE loop_detalle; END IF;
-            UPDATE PRODUCTOS SET stock = stock + v_cantidad
-            WHERE producto_id = v_producto;
-        END LOOP;
-        CLOSE cur;
-
-        UPDATE VENTAS SET estado = 'anulada' WHERE venta_id = p_venta_id;
-
-    COMMIT;
-
-    SET p_ok      = 1;
-    SET p_mensaje = 'Venta anulada correctamente. Stock devuelto.';
 END $$
 
 
@@ -168,24 +160,19 @@ BEGIN
     IF v_existe = 0 THEN
         SET p_ok      = 0;
         SET p_mensaje = 'Producto no encontrado.';
-        LEAVE actualizar_stock;
-    END IF;
-
-    IF p_nuevo_stock < 0 THEN
+    ELSEIF p_nuevo_stock < 0 THEN
         SET p_ok      = 0;
         SET p_mensaje = 'El stock no puede ser negativo.';
-        LEAVE actualizar_stock;
+    ELSE
+        UPDATE PRODUCTOS
+        SET stock        = p_nuevo_stock,
+            stock_minimo = p_nuevo_minimo
+        WHERE producto_id = p_producto_id;
+
+        SET p_ok      = 1;
+        SET p_mensaje = 'Stock actualizado correctamente.';
     END IF;
-
-    UPDATE PRODUCTOS
-    SET stock        = p_nuevo_stock,
-        stock_minimo = p_nuevo_minimo
-    WHERE producto_id = p_producto_id;
-
-    SET p_ok      = 1;
-    SET p_mensaje = 'Stock actualizado correctamente.';
 END $$
-
 
 
 -- 4: crear_cliente
@@ -216,23 +203,21 @@ BEGIN
     IF p_email IS NOT NULL AND p_email != '' THEN
         SELECT COUNT(*) INTO v_duplicado
         FROM CLIENTES WHERE email = p_email;
-
-        IF v_duplicado > 0 THEN
-            SET p_ok         = 0;
-            SET p_cliente_id = 0;
-            SET p_mensaje    = 'El email ya esta registrado.';
-            LEAVE crear_cliente;
-        END IF;
     END IF;
 
-    INSERT INTO CLIENTES (nombre, email, telefono, direccion, fecha_registro)
-    VALUES (p_nombre, NULLIF(p_email,''), NULLIF(p_telefono,''), NULLIF(p_direccion,''), CURDATE());
+    IF v_duplicado > 0 THEN
+        SET p_ok         = 0;
+        SET p_cliente_id = 0;
+        SET p_mensaje    = 'El email ya esta registrado.';
+    ELSE
+        INSERT INTO CLIENTES (nombre, email, telefono, direccion, fecha_registro)
+        VALUES (p_nombre, NULLIF(p_email,''), NULLIF(p_telefono,''), NULLIF(p_direccion,''), CURDATE());
 
-    SET p_cliente_id = LAST_INSERT_ID();
-    SET p_ok         = 1;
-    SET p_mensaje    = 'Cliente creado correctamente.';
+        SET p_cliente_id = LAST_INSERT_ID();
+        SET p_ok         = 1;
+        SET p_mensaje    = 'Cliente creado correctamente.';
+    END IF;
 END $$
-
 
 
 -- 5: reporte_ventas_empleado
@@ -249,10 +234,10 @@ BEGIN
             e.empleado_id,
             e.nombre     AS empleado,
             e.puesto,
-            COUNT(v.venta_id)            AS total_ventas,
-            IFNULL(SUM(v.total),    0)   AS monto_total,
-            IFNULL(AVG(v.total),    0)   AS promedio_venta,
-            IFNULL(SUM(dv.cantidad),0)   AS unidades_vendidas
+            COUNT(v.venta_id)             AS total_ventas,
+            IFNULL(SUM(v.total),     0)   AS monto_total,
+            IFNULL(AVG(v.total),     0)   AS promedio_por_venta,
+            IFNULL(SUM(dv.cantidad), 0)   AS unidades_vendidas
         FROM EMPLEADOS e
         LEFT JOIN VENTAS v          ON v.empleado_id = e.empleado_id AND v.estado = 'completada'
         LEFT JOIN DETALLE_VENTAS dv ON dv.venta_id   = v.venta_id
@@ -263,10 +248,10 @@ BEGIN
             e.empleado_id,
             e.nombre     AS empleado,
             e.puesto,
-            COUNT(v.venta_id)            AS total_ventas,
-            IFNULL(SUM(v.total),    0)   AS monto_total,
-            IFNULL(AVG(v.total),    0)   AS promedio_venta,
-            IFNULL(SUM(dv.cantidad),0)   AS unidades_vendidas
+            COUNT(v.venta_id)             AS total_ventas,
+            IFNULL(SUM(v.total),     0)   AS monto_total,
+            IFNULL(AVG(v.total),     0)   AS promedio_por_venta,
+            IFNULL(SUM(dv.cantidad), 0)   AS unidades_vendidas
         FROM EMPLEADOS e
         LEFT JOIN VENTAS v          ON v.empleado_id = e.empleado_id AND v.estado = 'completada'
         LEFT JOIN DETALLE_VENTAS dv ON dv.venta_id   = v.venta_id
@@ -274,6 +259,5 @@ BEGIN
         GROUP BY e.empleado_id, e.nombre, e.puesto;
     END IF;
 END $$
-
 
 DELIMITER ;
