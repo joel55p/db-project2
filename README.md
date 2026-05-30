@@ -1,6 +1,6 @@
 # CapGt — Proyecto 3: Seguridad, Roles, Stored Procedures y ORM
 
-**Bases de Datos 1,  Universidad del Valle de Guatemala**
+**Bases de Datos 1, Universidad del Valle de Guatemala**
 **Joel Nerio — 24253 | Rama obligatoria: `proyecto-3`**
 
 ---
@@ -27,6 +27,13 @@ docker compose up --build
 | Backend  | http://localhost:3000 |
 | MySQL    | localhost:3306 |
 
+## Credenciales BD ( segun la rubrica)
+
+```
+DB_USER=proy3
+DB_PASSWORD=secret
+```
+
 ## Usuarios de prueba
 
 | Usuario | Contraseña | Rol |
@@ -36,12 +43,6 @@ docker compose up --build
 | vendedor1 | secret123 | Vendedor |
 | cajero1 | secret123 | Cajero |
 | bodeguero1 | secret123 | Bodeguero |
-
-## Credenciales BD (rúbrica)
-```
-DB_USER=proy3
-DB_PASSWORD=secret
-```
 
 ---
 
@@ -53,27 +54,27 @@ capgt/
 ├── .env.example
 ├── ROLES.md
 ├── mysql-init/
-│   ├── 01_ddl.sql
-│   ├── 02_indices.sql
-│   ├── 03_views.sql
-│   ├── 04_seed.sql
-│   ├── 05_roles.sql          ← CREATE ROLE + GRANT/REVOKE
-│   ├── 06_usuarios_roles.sql ← usuarios de prueba por rol
-│   └── 07_stored_procedures.sql ← 5 Stored Procedures
+│   ├── 01_ddl.sql               <- Definición de tablas
+│   ├── 02_indices.sql           <- Índices explícitos
+│   ├── 03_views.sql             <- Vistas del backend
+│   ├── 04_seed.sql              <- Datos de prueba
+│   ├── 05_roles.sql             <- CREATE ROLE y  GRANT/REVOKE (5 roles DBMS)
+│   ├── 06_usuarios_roles.sql    <- Usuarios de prueba por rol
+│   └── 07_stored_procedures.sql <- 5 Stored Procedures
 ├── backend/
-│   ├── server.js             ← arranca Sequelize ORM
+│   ├── server.js                <- Express y Sequelize ORM
 │   ├── db/
-│   │   ├── pool.js           ← conexión mysql2 (SQL directo)
-│   │   └── sequelize.js      ← ORM: modelos Categoria, Cliente, Empleado
-│   ├── middleware/auth.js    ← requireAuth + requireRol
+│   │   ├── pool.js              <- Conexión mysql2 (SQL directo)
+│   │   └── sequelize.js         <- ORM: modelos Categoria, Cliente, Empleado
+│   ├── middleware/auth.js       <- requireAuth y requireRol
 │   └── routes/
-│       ├── auth.js           ← login/logout con permisos por rol
-│       ├── categorias.js     ← CRUD con Sequelize ORM
-│       ├── clientes.js       ← ORM + SP sp_crear_cliente
-│       ├── empleados.js      ← CRUD con Sequelize ORM
-│       ├── productos.js      ← SQL + SP sp_actualizar_stock
-│       ├── ventas.js         ← SP sp_registrar_venta + sp_anular_venta
-│       └── proveedores.js    ← CRUD SQL directo
+│       ├── auth.js              <- login/logout con permisos por rol
+│       ├── categorias.js        <- CRUD con Sequelize ORM
+│       ├── clientes.js          <- ORM y SP crear_cliente
+│       ├── empleados.js         <- CRUD con Sequelize ORM
+│       ├── productos.js         <- SQL y SP actualizar_stock
+│       ├── ventas.js            <- SP registrar_venta y anular_venta
+│       └── proveedores.js       <- CRUD SQL directo
 └── frontend/
     └── public/
         ├── index.html
@@ -83,20 +84,33 @@ capgt/
 
 ---
 
-## Stored Procedures (5)
+## Seguridad y Roles
 
-| SP | Descripción | Tipo |
+Los 5 roles están definidos directamente en MySQL mediante `CREATE ROLE`, con permisos granulares asignados por tabla y operación usando `GRANT` y `REVOKE`. Ver `mysql-init/05_roles.sql` y `ROLES.md` para el esquema completo.
+
+| Rol DBMS | Usuario de prueba | Descripción |
 |---|---|---|
-| `sp_registrar_venta` | Registra venta con START TRANSACTION + ROLLBACK | IN/OUT + transacción |
-| `sp_anular_venta` | Anula venta con cursor + ROLLBACK | IN/OUT + excepciones |
-| `sp_actualizar_stock` | Actualiza stock con validaciones | IN/OUT |
-| `sp_crear_cliente` | Crea cliente validando email duplicado | IN/OUT |
-| `sp_reporte_ventas_empleado` | Reporte de ventas por empleado | IN |
+| `rol_admin` | admin / admin123 | Acceso total al sistema |
+| `rol_supervisor` | supervisor1 / secret123 | Ve todo, gestiona empleados y reportes |
+| `rol_vendedor` | vendedor1 / secret123 | Registra ventas y gestiona clientes |
+| `rol_cajero` | cajero1 / secret123 | Solo ve ventas y actualiza estado |
+| `rol_bodeguero` | bodeguero1 / secret123 | Solo ve y actualiza stock de productos |
 
-## ORM — Sequelize (3 entidades)
+La autenticación usa sesiones Express (`express-session`). El middleware `requireAuth` y `requireRol` protege cada ruta del backend. En el frontend, el sidebar y los botones de acción se ocultan o muestran según los permisos retornados al hacer login.
 
-| Entidad | Operaciones ORM |
-|---|---|
-| `Categoria` | findAll, create, update, destroy |
-| `Cliente` | findAll, findByPk, update, destroy |
-| `Empleado` | findAll, findByPk, create, update, destroy |
+---
+
+##  Stored Procedures ( que son 5)
+
+Todos los SPs son invocados desde el backend (no desde scripts independientes). Se puede ver en  `mysql-init/07_stored_procedures.sql`.
+
+| SP | Invocado en | Descripción | IN/OUT | Transacción |
+|---|---|---|---|---|
+| `registrar_venta` | `routes/ventas.js` | Registra venta para 1 producto | si | `START TRANSACTION` + `ROLLBACK` |
+| `anular_venta` | `routes/ventas.js` | Anula venta con cursor y devuelve stock | si | `START TRANSACTION` + `ROLLBACK` |
+| `actualizar_stock` | `routes/productos.js` | Actualiza stock con validaciones | si | — |
+| `crear_cliente` | `routes/clientes.js` | Crea cliente validando email duplicado | si | — |
+| `reporte_ventas_empleado` | `routes/ventas.js` | Reporte de ventas por empleado | si | — |
+
+Todos los SPs usan `DECLARE EXIT HANDLER FOR SQLEXCEPTION` para manejo de excepciones.
+
