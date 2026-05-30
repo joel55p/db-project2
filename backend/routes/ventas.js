@@ -12,9 +12,9 @@ router.get('/', requireAuth, requireRol('admin','supervisor','vendedor','cajero'
     const { estado, fecha_desde, fecha_hasta } = req.query;
     let sql = 'SELECT * FROM v_ventas_detalle WHERE 1=1';
     const args = [];
-    if (estado)      { sql += ' AND estado = ?';              args.push(estado); }
-    if (fecha_desde) { sql += ' AND fecha_venta >= ?';        args.push(fecha_desde); }
-    if (fecha_hasta) { sql += ' AND fecha_venta <= ?';        args.push(fecha_hasta + ' 23:59:59'); }
+    if (estado)      { sql += ' AND estado = ?';          args.push(estado); }
+    if (fecha_desde) { sql += ' AND fecha_venta >= ?';    args.push(fecha_desde); }
+    if (fecha_hasta) { sql += ' AND fecha_venta <= ?';    args.push(fecha_hasta + ' 23:59:59'); }
     sql += ' ORDER BY fecha_venta DESC';
     const [rows] = await pool.query(sql, args);
     return res.json(rows);
@@ -23,7 +23,7 @@ router.get('/', requireAuth, requireRol('admin','supervisor','vendedor','cajero'
   }
 });
 
-// GET reporte mensual CTE y GROUP BY
+// GET reporte mensual con CTE y  GROUP BY
 router.get('/reporte-mensual', requireAuth, requireRol('admin','supervisor'), async (req, res) => {
   try {
     const [rows] = await pool.query(`
@@ -43,11 +43,10 @@ router.get('/reporte-mensual', requireAuth, requireRol('admin','supervisor'), as
   }
 });
 
-// GET rendimiento empleados donde a invoca SP sp_reporte_ventas_empleado
+// GET rendimiento empleados que invoca reporte_ventas_empleado (SP5)
 router.get('/rendimiento-empleados', requireAuth, requireRol('admin','supervisor'), async (req, res) => {
   try {
-    // Llamada al stored procedure SP5
-    const [rows] = await pool.query('CALL sp_reporte_ventas_empleado(?)', [0]);
+    const [rows] = await pool.query('CALL reporte_ventas_empleado(?)', [0]);
     return res.json(rows[0]);
   } catch (err) {
     return res.status(500).json({ error: 'Error al obtener rendimiento.' });
@@ -92,18 +91,17 @@ router.get('/:id', requireAuth, requireRol('admin','supervisor','vendedor','caje
   }
 });
 
-// POST nueva venta donde se  invoca SP sp_registrar_venta 
-// Para ventas con mas de un producto, el SP se llama por cada uno
+// POST nueva venta que invoca registrar_venta  si es 1 producto
 router.post('/', requireAuth, requireRol('admin','vendedor'), async (req, res) => {
   const { cliente_id, empleado_id, metodo_pago, items } = req.body;
   if (!cliente_id || !empleado_id || !metodo_pago || !items || items.length === 0)
     return res.status(400).json({ error: 'Datos de venta incompletos.' });
 
-  // Si tiene un solo producto, usa el SP directamente
+  // 1 producto enotonces  usa Stored procedure registrar_venta 
   if (items.length === 1) {
     try {
       await pool.query(
-        'CALL sp_registrar_venta(?,?,?,?,?,@p_vid,@p_total,@p_err)',
+        'CALL registrar_venta(?,?,?,?,?,@p_vid,@p_total,@p_err)',
         [cliente_id, empleado_id, metodo_pago, items[0].producto_id, items[0].cantidad]
       );
       const [[r]] = await pool.query('SELECT @p_vid AS vid, @p_total AS total, @p_err AS err');
@@ -114,7 +112,7 @@ router.post('/', requireAuth, requireRol('admin','vendedor'), async (req, res) =
     }
   }
 
-  // Si tiene varios, usa transacción explicita en Node
+  // Varios productos entonces hace  transaccion explicita en Node
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
@@ -133,7 +131,7 @@ router.post('/', requireAuth, requireRol('admin','vendedor'), async (req, res) =
     }
     const [ventaRes] = await conn.query(
       `INSERT INTO VENTAS (cliente_id, empleado_id, fecha_venta, total, metodo_pago, estado)
-       VALUES (?,?,NOW(),?,'completada',?)`,
+       VALUES (?,?,NOW(),?,?,'completada')`,
       [cliente_id, empleado_id, total, metodo_pago]
     );
     const venta_id = ventaRes.insertId;
@@ -155,7 +153,7 @@ router.post('/', requireAuth, requireRol('admin','vendedor'), async (req, res) =
   }
 });
 
-// PUT anular venta que invoca SP sp_anular_venta 
+// PUT anular venta que invoca anular_venta  con params OUT
 router.put('/:id/estado', requireAuth, requireRol('admin','supervisor'), async (req, res) => {
   const { estado } = req.body;
   if (!['completada','anulada','pendiente'].includes(estado))
@@ -163,8 +161,7 @@ router.put('/:id/estado', requireAuth, requireRol('admin','supervisor'), async (
 
   if (estado === 'anulada') {
     try {
-      // Llamada al SP sp_anular_venta con param OUT
-      await pool.query('CALL sp_anular_venta(?, @p_ok, @p_msg)', [req.params.id]);
+      await pool.query('CALL anular_venta(?, @p_ok, @p_msg)', [req.params.id]);
       const [[r]] = await pool.query('SELECT @p_ok AS ok, @p_msg AS msg');
       if (!r.ok) return res.status(400).json({ error: r.msg });
       return res.json({ message: r.msg });
@@ -173,7 +170,6 @@ router.put('/:id/estado', requireAuth, requireRol('admin','supervisor'), async (
     }
   }
 
-  // Para otros estados, SQL directo
   try {
     await pool.query('UPDATE VENTAS SET estado = ? WHERE venta_id = ?', [estado, req.params.id]);
     return res.json({ message: `Venta actualizada a: ${estado}.` });

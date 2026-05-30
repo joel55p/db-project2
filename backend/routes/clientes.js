@@ -1,19 +1,21 @@
-//  CRUD usando Sequelize ORM + SP sp_crear_cliente
+// CRUD con Sequelize ORM  y con crear_cliente 
+
 
 const express = require('express');
+const { Op }  = require('sequelize');
 const { Cliente } = require('../db/sequelize');
-const pool = require('../db/pool');
+const pool    = require('../db/pool');
 const { requireAuth, requireRol } = require('../middleware/auth');
-const router = express.Router();
+const router  = express.Router();
 
-// GET ORM igual en Cliente.findAll()
+// GET con ORM en  Cliente.findAll()
 router.get('/', requireAuth, requireRol('admin','supervisor','vendedor','cajero'), async (req, res) => {
   try {
     const { search } = req.query;
     const where = search ? {
-      [require('sequelize').Op.or]: [
-        { nombre:   { [require('sequelize').Op.like]: `%${search}%` } },
-        { email:    { [require('sequelize').Op.like]: `%${search}%` } },
+      [Op.or]: [
+        { nombre: { [Op.like]: `%${search}%` } },
+        { email:  { [Op.like]: `%${search}%` } },
       ]
     } : {};
     const rows = await Cliente.findAll({ where, order: [['nombre','ASC']] });
@@ -23,7 +25,7 @@ router.get('/', requireAuth, requireRol('admin','supervisor','vendedor','cajero'
   }
 });
 
-// GET por ID con  ORM en  Cliente.findByPk() y maneja caso de no encontrado
+// GET por ID  con ORM en  Cliente.findByPk()
 router.get('/:id', requireAuth, requireRol('admin','supervisor','vendedor','cajero'), async (req, res) => {
   try {
     const c = await Cliente.findByPk(req.params.id);
@@ -34,14 +36,15 @@ router.get('/:id', requireAuth, requireRol('admin','supervisor','vendedor','caje
   }
 });
 
-// POST en donde invoca SP sp_crear_cliente
+// POST que invoca  a crear_cliente 
 router.post('/', requireAuth, requireRol('admin','vendedor'), async (req, res) => {
   const { nombre, email, telefono, direccion } = req.body;
   if (!nombre) return res.status(400).json({ error: 'El nombre es requerido.' });
   try {
-    // Llamada al sp con parametros OUT
-    await pool.query('CALL sp_crear_cliente(?, ?, ?, ?, @p_id, @p_ok, @p_msg)',
-      [nombre, email || '', telefono || '', direccion || '']);
+    await pool.query(
+      'CALL crear_cliente(?, ?, ?, ?, @p_id, @p_ok, @p_msg)',
+      [nombre, email || '', telefono || '', direccion || '']
+    );
     const [[result]] = await pool.query('SELECT @p_id AS id, @p_ok AS ok, @p_msg AS msg');
     if (!result.ok) return res.status(409).json({ error: result.msg });
     return res.status(201).json({ message: result.msg, cliente_id: result.id });
@@ -50,7 +53,7 @@ router.post('/', requireAuth, requireRol('admin','vendedor'), async (req, res) =
   }
 });
 
-// PUT con  ORM en Cliente.update() y valida que nombre no este vacio, maneja caso de no encontrado y error de email duplicado
+// PUT con ORM en  Cliente.update()
 router.put('/:id', requireAuth, requireRol('admin','vendedor'), async (req, res) => {
   const { nombre, email, telefono, direccion } = req.body;
   if (!nombre) return res.status(400).json({ error: 'El nombre es requerido.' });
@@ -68,7 +71,7 @@ router.put('/:id', requireAuth, requireRol('admin','vendedor'), async (req, res)
   }
 });
 
-// DELETE con  ORM en Cliente.destroy() y maneja caso de no encontrado y error de FK si tiene ventas asociadas
+// DELETE con  ORM en  Cliente.destroy()
 router.delete('/:id', requireAuth, requireRol('admin'), async (req, res) => {
   try {
     const n = await Cliente.destroy({ where: { cliente_id: req.params.id } });

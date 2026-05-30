@@ -1,4 +1,4 @@
-// CRUD con SPs para stock
+//  CRUD  y  actualizar_stock 
 
 
 const express = require('express');
@@ -6,13 +6,13 @@ const pool    = require('../db/pool');
 const { requireAuth, requireRol } = require('../middleware/auth');
 const router  = express.Router();
 
-// GET todos los productos
+// GET todos
 router.get('/', requireAuth, async (req, res) => {
   try {
     const { marca, categoria_id, stock_bajo } = req.query;
     let sql = 'SELECT * FROM v_catalogo_productos WHERE 1=1';
     const args = [];
-    if (marca)        { sql += ' AND marca = ?';  args.push(marca); }
+    if (marca)        { sql += ' AND marca = ?'; args.push(marca); }
     if (categoria_id) { sql += ' AND producto_id IN (SELECT producto_id FROM PRODUCTOS WHERE categoria_id = ?)'; args.push(parseInt(categoria_id)); }
     if (stock_bajo === '1') { sql += ' AND stock_bajo = 1'; }
     sql += ' ORDER BY nombre';
@@ -33,16 +33,16 @@ router.get('/marcas', requireAuth, async (req, res) => {
   }
 });
 
-// GET mas vendidos con GROUP BY y HAVING
+// GET mas vendidos  con  GROUP BY  y HAVING
 router.get('/mas-vendidos', requireAuth, requireRol('admin','supervisor'), async (req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT p.producto_id, p.nombre, p.marca, c.nombre AS categoria,
              SUM(dv.cantidad) AS total_vendido, SUM(dv.subtotal) AS ingresos_total, p.stock
       FROM DETALLE_VENTAS dv
-      JOIN PRODUCTOS p   ON p.producto_id  = dv.producto_id
-      JOIN CATEGORIAS c  ON c.categoria_id = p.categoria_id
-      JOIN VENTAS v      ON v.venta_id     = dv.venta_id
+      JOIN PRODUCTOS p  ON p.producto_id  = dv.producto_id
+      JOIN CATEGORIAS c ON c.categoria_id = p.categoria_id
+      JOIN VENTAS v     ON v.venta_id     = dv.venta_id
       WHERE v.estado = 'completada'
       GROUP BY p.producto_id, p.nombre, p.marca, c.nombre, p.stock
       HAVING SUM(dv.cantidad) >= 1
@@ -54,14 +54,14 @@ router.get('/mas-vendidos', requireAuth, requireRol('admin','supervisor'), async
   }
 });
 
-// GET stock critico con EXISTS subquery
+// GET stock critico con  EXISTS subquery
 router.get('/stock-critico', requireAuth, async (req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT p.producto_id, p.nombre, p.marca, p.stock, p.stock_minimo,
              c.nombre AS categoria, pr.nombre AS proveedor, pr.email AS proveedor_email
       FROM PRODUCTOS p
-      JOIN CATEGORIAS c  ON c.categoria_id  = p.categoria_id
+      JOIN CATEGORIAS c   ON c.categoria_id  = p.categoria_id
       JOIN PROVEEDORES pr ON pr.proveedor_id = p.proveedor_id
       WHERE p.stock <= p.stock_minimo
         AND EXISTS (SELECT 1 FROM DETALLE_VENTAS dv WHERE dv.producto_id = p.producto_id)
@@ -84,7 +84,7 @@ router.get('/:id', requireAuth, async (req, res) => {
   }
 });
 
-// POST — SQL directo
+// POST  que es SQL directo
 router.post('/', requireAuth, requireRol('admin','bodeguero'), async (req, res) => {
   const { categoria_id, proveedor_id, nombre, marca, talla, color,
           precio_compra, precio_venta, stock, stock_minimo } = req.body;
@@ -106,15 +106,13 @@ router.post('/', requireAuth, requireRol('admin','bodeguero'), async (req, res) 
   }
 });
 
-// PUT que invoca SP sp_actualizar_stock  para el stock,
-//         y SQL directo para los demás campos
+// PUT  con  SQL directo para datos  y  actualizar_stock  para el stock
 router.put('/:id', requireAuth, requireRol('admin','bodeguero'), async (req, res) => {
   const { categoria_id, proveedor_id, nombre, marca, talla, color,
           precio_compra, precio_venta, stock, stock_minimo } = req.body;
   if (precio_compra && precio_venta && parseFloat(precio_venta) <= parseFloat(precio_compra))
     return res.status(400).json({ error: 'El precio de venta debe ser mayor al precio de compra.' });
   try {
-    // Actualizar datos del producto
     const [result] = await pool.query(
       `UPDATE PRODUCTOS SET categoria_id=?, proveedor_id=?, nombre=?, marca=?,
          talla=?, color=?, precio_compra=?, precio_venta=?
@@ -124,9 +122,9 @@ router.put('/:id', requireAuth, requireRol('admin','bodeguero'), async (req, res
     );
     if (result.affectedRows === 0) return res.status(404).json({ error: 'Producto no encontrado.' });
 
-    // Actualizar stock via SP sp_actualizar_stock 
+    // Actualizar stock via el procedimiento actualizar_stock 
     if (stock != null && stock_minimo != null) {
-      await pool.query('CALL sp_actualizar_stock(?, ?, ?, @p_ok, @p_msg)',
+      await pool.query('CALL actualizar_stock(?, ?, ?, @p_ok, @p_msg)',
         [req.params.id, stock, stock_minimo]);
       const [[r]] = await pool.query('SELECT @p_ok AS ok, @p_msg AS msg');
       if (!r.ok) return res.status(400).json({ error: r.msg });
