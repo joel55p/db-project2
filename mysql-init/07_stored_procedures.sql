@@ -1,6 +1,6 @@
 
 
-—- Stored Procedures
+-- Stored Procedures
 -- ----------------------------------------------------
 
 USE capgt_db;
@@ -274,3 +274,6 @@ BEGIN
         GROUP BY e.empleado_id, e.nombre, e.puesto;
     END IF;
 END $$
+
+
+DELIMITER ;
