@@ -1,7 +1,7 @@
 # CapGt — Proyecto 3: Seguridad, Roles, Stored Procedures y ORM
 
 **Bases de Datos 1, Universidad del Valle de Guatemala**
-**Joel Nerio — 24253 | Rama obligatoria: `proyecto-3`**
+**Joel Nerio,  24253,  Rama obligatoria: `proyecto-3`**
 
 ---
 
